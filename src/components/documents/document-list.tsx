@@ -1,18 +1,23 @@
 "use client"
 
-import { useState } from "react"
 import { deleteDocument } from "@/lib/api/documents"
 import type { Document } from "@/shared/models"
+import { useState } from "react"
 
-export default function DocumentList({ initialDocuments }: { initialDocuments: Document[] }) {
-  const [documents, setDocuments] = useState<Document[]>(initialDocuments)
+export default function DocumentList({
+  documents,
+  onDelete,
+}: {
+  documents: Document[]
+  onDelete: (id: string) => void
+}) {
   const [deleting, setDeleting] = useState<string | null>(null)
 
   async function handleDelete(id: string) {
     setDeleting(id)
     try {
       await deleteDocument(id)
-      setDocuments((prev) => prev.filter((d) => d.id !== id))
+      onDelete(id)
     } catch {
       alert("Erro ao remover documento.")
     } finally {

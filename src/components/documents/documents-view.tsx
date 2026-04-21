@@ -11,7 +11,10 @@ export default function DocumentsView({ initialDocuments }: { initialDocuments: 
   return (
     <>
       <UploadForm onUpload={(doc) => setDocuments((prev) => [doc, ...prev])} />
-      <DocumentList initialDocuments={documents} />
+      <DocumentList
+        documents={documents}
+        onDelete={(id) => setDocuments((prev) => prev.filter((d) => d.id !== id))}
+      />
     </>
   )
 }
