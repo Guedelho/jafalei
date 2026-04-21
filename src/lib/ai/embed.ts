@@ -1,9 +1,16 @@
 import "server-only"
-import { genAI } from "@/lib/ai/genai"
+import { GoogleGenerativeAIEmbeddings } from "@langchain/google-genai"
 import { EMBED_MODEL } from "@/shared/constants"
 
+const embeddings = new GoogleGenerativeAIEmbeddings({
+  model: EMBED_MODEL,
+  apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+})
+
 export async function embedText(text: string): Promise<number[]> {
-  const model = genAI.getGenerativeModel({ model: EMBED_MODEL })
-  const result = await model.embedContent(text)
-  return result.embedding.values
+  return embeddings.embedQuery(text)
+}
+
+export async function embedTexts(texts: string[]): Promise<number[][]> {
+  return embeddings.embedDocuments(texts)
 }

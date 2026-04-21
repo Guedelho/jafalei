@@ -1,18 +1,13 @@
 import { getUserId } from "@/lib/supabase/auth"
 import { createAdmin } from "@/lib/supabase/admin"
-import { embedText } from "@/lib/ai/embed"
+import { embedTexts } from "@/lib/ai/embed"
 import { CHUNK_SIZE, CHUNK_OVERLAP } from "@/shared/constants"
+import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters"
 
-function chunkText(text: string): string[] {
-  const chunks: string[] = []
-  let start = 0
-  while (start < text.length) {
-    const end = Math.min(start + CHUNK_SIZE, text.length)
-    chunks.push(text.slice(start, end).trim())
-    start += CHUNK_SIZE - CHUNK_OVERLAP
-  }
-  return chunks.filter((c) => c.length > 0)
-}
+const splitter = new RecursiveCharacterTextSplitter({
+  chunkSize: CHUNK_SIZE,
+  chunkOverlap: CHUNK_OVERLAP,
+})
 
 export async function GET() {
   const userId = await getUserId()
@@ -89,16 +84,15 @@ export async function POST(req: Request) {
     return Response.json({ error: "Erro ao salvar documento." }, { status: 500 })
   }
 
-  const chunks = chunkText(text)
   try {
-    const rows = await Promise.all(
-      chunks.map(async (content, chunk_index) => ({
-        document_id: doc.id,
-        content,
-        embedding: await embedText(content),
-        chunk_index,
-      })),
-    )
+    const chunks = await splitter.splitText(text)
+    const embeddings = await embedTexts(chunks)
+    const rows = chunks.map((content: string, chunk_index: number) => ({
+      document_id: doc.id,
+      content,
+      embedding: embeddings[chunk_index],
+      chunk_index,
+    }))
     await admin.from("document_chunks").insert(rows)
   } catch (err) {
     console.error("[documents] embed error:", err)
