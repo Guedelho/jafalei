@@ -22,7 +22,13 @@ export async function POST(req: Request) {
   }
 
   const lastUserMessage = [...messages].reverse().find((m) => m.role === "user")?.content ?? ""
-  const context = await retrieveContext(lastUserMessage)
+
+  let context = ""
+  try {
+    context = await retrieveContext(lastUserMessage)
+  } catch (err) {
+    console.error("[chat] retrieveContext error:", err)
+  }
 
   const systemPrompt = context
     ? `Você é um assistente que responde perguntas com base nos documentos fornecidos.\nResponda em português. Se a resposta não estiver nos documentos, diga que não encontrou a informação.\n\nDocumentos:\n${context}`
