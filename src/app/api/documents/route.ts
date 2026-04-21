@@ -58,7 +58,7 @@ export async function POST(req: Request) {
 
     if (file.type === "application/pdf") {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const pdfParse = require("pdf-parse/lib/pdf-parse") as (
+      const pdfParse = require("pdf-parse") as (
         b: Buffer,
         opts: {
           pagerender: (page: {
