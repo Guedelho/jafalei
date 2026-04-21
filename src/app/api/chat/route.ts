@@ -1,26 +1,7 @@
 import { getUserId } from "@/lib/supabase/auth"
-import { createAdmin } from "@/lib/supabase/admin"
-import { retrieveDocs } from "@/lib/ai/rag"
-import { chatModel } from "@/lib/ai/genai"
 import { checkRateLimit } from "@/lib/server-utils"
-import type { Message, SseEvent } from "@/shared/models"
-import { Document } from "@langchain/core/documents"
-import { ChatPromptTemplate, MessagesPlaceholder } from "@langchain/core/prompts"
-import { HumanMessage, AIMessage } from "@langchain/core/messages"
-import { createStuffDocumentsChain } from "@langchain/classic/chains/combine_documents"
-
-const prompt = ChatPromptTemplate.fromMessages([
-  [
-    "system",
-    `Você é um assistente que responde perguntas com base nos documentos fornecidos.
-Responda em português. Se a resposta não estiver nos documentos, diga que não encontrou a informação.
-
-Contexto:
-{context}`,
-  ],
-  new MessagesPlaceholder("chat_history"),
-  ["human", "{input}"],
-])
+import { streamChat } from "@/lib/ai/chat"
+import type { Message } from "@/shared/models"
 
 export async function POST(req: Request) {
   const userId = await getUserId()
@@ -30,69 +11,13 @@ export async function POST(req: Request) {
     return Response.json({ error: "Muitas requisições. Tente novamente." }, { status: 429 })
   }
 
-  const {
-    input: lastUserMessage,
-    chat_history,
-    sessionId,
-  } = (await req.json()) as {
+  const { input, chat_history, sessionId } = (await req.json()) as {
     input: string
     chat_history: Message[]
     sessionId: string
   }
 
-  const chatHistory = chat_history.map((m) =>
-    m.role === "user" ? new HumanMessage(m.content) : new AIMessage(m.content),
-  )
-
-  // Retrieve docs before the stream — safe for Supabase session
-  let docs: Document[] = []
-  try {
-    docs = await retrieveDocs(lastUserMessage)
-  } catch (err) {
-    console.error("[chat] retrieval error:", err)
-  }
-
-  const chain = await createStuffDocumentsChain({ llm: chatModel, prompt })
-
-  const encoder = new TextEncoder()
-  const stream = new ReadableStream({
-    async start(controller) {
-      const send = (event: SseEvent) => {
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`))
-      }
-
-      let fullText = ""
-      try {
-        const chainStream = await chain.stream({
-          input: lastUserMessage,
-          context: docs,
-          chat_history: chatHistory,
-        })
-        for await (const text of chainStream) {
-          if (text) {
-            fullText += text
-            send({ type: "chunk", text })
-          }
-        }
-      } catch (err) {
-        console.error("[chat] stream error:", err)
-        send({ type: "error", message: "Erro ao gerar resposta. Tente novamente." })
-        controller.close()
-        return
-      }
-
-      send({ type: "done" })
-      controller.close()
-
-      if (sessionId && fullText) {
-        const admin = createAdmin()
-        await admin.from("messages").insert([
-          { session_id: sessionId, role: "user", content: lastUserMessage },
-          { session_id: sessionId, role: "assistant", content: fullText },
-        ])
-      }
-    },
-  })
+  const stream = await streamChat({ input, chat_history, sessionId })
 
   return new Response(stream, {
     headers: {
