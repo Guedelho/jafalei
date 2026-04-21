@@ -5,7 +5,16 @@ import { checkRateLimit } from "@/lib/server-utils"
 import { CHAT_MODEL } from "@/shared/constants"
 import type { Message, SseEvent } from "@/shared/models"
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai"
-import { HumanMessage, AIMessage, SystemMessage } from "@langchain/core/messages"
+import { ChatPromptTemplate } from "@langchain/core/prompts"
+import { StringOutputParser } from "@langchain/core/output_parsers"
+
+const SYSTEM_PROMPT_WITH_CONTEXT = `Você é um assistente que responde perguntas com base nos documentos fornecidos.
+Responda em português. Se a resposta não estiver nos documentos, diga que não encontrou a informação.
+
+Contexto:
+{context}`
+
+const SYSTEM_PROMPT_NO_CONTEXT = `Você é um assistente prestativo. Responda em português. Não há documentos carregados ainda.`
 
 export async function POST(req: Request) {
   const userId = await getUserId()
@@ -21,25 +30,21 @@ export async function POST(req: Request) {
   }
 
   const lastUserMessage = [...messages].reverse().find((m) => m.role === "user")?.content ?? ""
+  const history = messages.slice(0, -1)
 
-  let contextDocs: import("@langchain/core/documents").Document[] = []
+  let context = ""
   try {
-    contextDocs = await retrieveContext(lastUserMessage)
+    const docs = await retrieveContext(lastUserMessage)
+    context = docs.map((d) => d.pageContent).join("\n\n")
   } catch (err) {
     console.error("[chat] retrieveContext error:", err)
   }
 
-  const systemPrompt =
-    contextDocs.length > 0
-      ? `Você é um assistente que responde perguntas com base nos documentos fornecidos.\nResponda em português. Se a resposta não estiver nos documentos, diga que não encontrou a informação.\n\nDocumentos:\n${contextDocs.map((d) => d.pageContent).join("\n\n")}`
-      : `Você é um assistente prestativo. Responda em português. Não há documentos carregados ainda.`
-
-  const langchainMessages = [
-    new SystemMessage(systemPrompt),
-    ...messages.map((m) =>
-      m.role === "user" ? new HumanMessage(m.content) : new AIMessage(m.content),
-    ),
-  ]
+  const prompt = ChatPromptTemplate.fromMessages([
+    ["system", context ? SYSTEM_PROMPT_WITH_CONTEXT : SYSTEM_PROMPT_NO_CONTEXT],
+    ...history.map((m) => [m.role === "user" ? "human" : "ai", m.content] as [string, string]),
+    ["human", "{input}"],
+  ])
 
   const model = new ChatGoogleGenerativeAI({
     model: CHAT_MODEL,
@@ -47,6 +52,8 @@ export async function POST(req: Request) {
     streaming: true,
     apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
   })
+
+  const chain = prompt.pipe(model).pipe(new StringOutputParser())
 
   const encoder = new TextEncoder()
   const stream = new ReadableStream({
@@ -57,9 +64,8 @@ export async function POST(req: Request) {
 
       let fullText = ""
       try {
-        const langchainStream = await model.stream(langchainMessages)
-        for await (const chunk of langchainStream) {
-          const text = typeof chunk.content === "string" ? chunk.content : ""
+        const chainStream = await chain.stream({ context, input: lastUserMessage })
+        for await (const text of chainStream) {
           if (text) {
             fullText += text
             send({ type: "chunk", text })
