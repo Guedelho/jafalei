@@ -1,7 +1,4 @@
-// Verify model IDs at: https://ai.google.dev/gemini-api/docs/models
 export const CHAT_MODEL = "gemini-3-flash-preview"
-
-// Gemini Embedding 2 — 3072 dims
 export const EMBED_MODEL = "gemini-embedding-2-preview"
 export const EMBED_DIMS = 3072
 

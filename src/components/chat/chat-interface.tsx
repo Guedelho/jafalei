@@ -4,8 +4,16 @@ import { useState, useRef, useEffect } from "react"
 import MessageList from "@/components/chat/message-list"
 import type { Message, SseEvent } from "@/shared/models"
 
-export default function ChatInterface({ sessionId }: { sessionId: string }) {
-  const [messages, setMessages] = useState<Message[]>([])
+export default function ChatInterface({
+  sessionId,
+  initialMessages = [],
+  onFirstMessage,
+}: {
+  sessionId: string
+  initialMessages?: Message[]
+  onFirstMessage?: (content: string) => void
+}) {
+  const [messages, setMessages] = useState<Message[]>(initialMessages)
   const [input, setInput] = useState("")
   const [streaming, setStreaming] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -27,6 +35,8 @@ export default function ChatInterface({ sessionId }: { sessionId: string }) {
     setInput("")
     setStreaming(true)
     setError(null)
+
+    if (messages.length === 0) onFirstMessage?.(text)
 
     try {
       const res = await fetch("/api/chat", {

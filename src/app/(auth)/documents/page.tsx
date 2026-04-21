@@ -1,12 +1,10 @@
 import { createAdmin } from "@/lib/supabase/admin"
 import { getUserId } from "@/lib/supabase/auth"
-import { redirect } from "next/navigation"
 import DocumentsView from "@/components/documents/documents-view"
 import type { Document } from "@/shared/models"
 
 export default async function DocumentsPage() {
   const userId = await getUserId()
-  if (!userId) redirect("/login")
 
   const admin = createAdmin()
   const { data } = await admin
