@@ -43,8 +43,6 @@ create index on documents (user_id);
 create index on document_chunks (document_id);
 create index on chat_sessions (user_id);
 create index on messages (session_id);
-create index on document_chunks using ivfflat (embedding vector_cosine_ops) with (lists = 100);
-
 -- Row Level Security
 alter table documents       enable row level security;
 alter table document_chunks enable row level security;
