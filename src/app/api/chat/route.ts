@@ -22,16 +22,17 @@ export async function POST(req: Request) {
 
   const lastUserMessage = [...messages].reverse().find((m) => m.role === "user")?.content ?? ""
 
-  let context = ""
+  let contextDocs: import("@langchain/core/documents").Document[] = []
   try {
-    context = await retrieveContext(lastUserMessage)
+    contextDocs = await retrieveContext(lastUserMessage)
   } catch (err) {
     console.error("[chat] retrieveContext error:", err)
   }
 
-  const systemPrompt = context
-    ? `Você é um assistente que responde perguntas com base nos documentos fornecidos.\nResponda em português. Se a resposta não estiver nos documentos, diga que não encontrou a informação.\n\nDocumentos:\n${context}`
-    : `Você é um assistente prestativo. Responda em português. Não há documentos carregados ainda.`
+  const systemPrompt =
+    contextDocs.length > 0
+      ? `Você é um assistente que responde perguntas com base nos documentos fornecidos.\nResponda em português. Se a resposta não estiver nos documentos, diga que não encontrou a informação.\n\nDocumentos:\n${contextDocs.map((d) => d.pageContent).join("\n\n")}`
+      : `Você é um assistente prestativo. Responda em português. Não há documentos carregados ainda.`
 
   const langchainMessages = [
     new SystemMessage(systemPrompt),

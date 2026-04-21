@@ -7,10 +7,6 @@ const embeddings = new GoogleGenerativeAIEmbeddings({
   apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
 })
 
-export async function embedText(text: string): Promise<number[]> {
-  return embeddings.embedQuery(text)
-}
-
 export async function embedTexts(texts: string[]): Promise<number[][]> {
   return embeddings.embedDocuments(texts)
 }
