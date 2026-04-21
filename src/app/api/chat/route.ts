@@ -1,10 +1,11 @@
 import { getUserId } from "@/lib/supabase/auth"
 import { createAdmin } from "@/lib/supabase/admin"
-import { createRetriever } from "@/lib/ai/rag"
+import { retrieveDocs } from "@/lib/ai/rag"
 import { checkRateLimit } from "@/lib/server-utils"
 import { CHAT_MODEL } from "@/shared/constants"
 import type { Message, SseEvent } from "@/shared/models"
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai"
+import { Document } from "@langchain/core/documents"
 import { ChatPromptTemplate, MessagesPlaceholder } from "@langchain/core/prompts"
 import { HumanMessage, AIMessage } from "@langchain/core/messages"
 import { createStuffDocumentsChain } from "@langchain/classic/chains/combine_documents"
@@ -52,10 +53,9 @@ export async function POST(req: Request) {
   )
 
   // Retrieve docs before the stream — safe for Supabase session
-  let docs: Awaited<ReturnType<Awaited<ReturnType<typeof createRetriever>>["invoke"]>> = []
+  let docs: Document[] = []
   try {
-    const retriever = await createRetriever()
-    docs = await retriever.invoke(lastUserMessage)
+    docs = await retrieveDocs(lastUserMessage)
   } catch (err) {
     console.error("[chat] retrieval error:", err)
   }
