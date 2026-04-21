@@ -8,19 +8,8 @@ import { ChatGoogleGenerativeAI } from "@langchain/google-genai"
 import { ChatPromptTemplate, MessagesPlaceholder } from "@langchain/core/prompts"
 import { HumanMessage, AIMessage } from "@langchain/core/messages"
 import { createStuffDocumentsChain } from "@langchain/classic/chains/combine_documents"
-import { createRetrievalChain } from "@langchain/classic/chains/retrieval"
-import { createHistoryAwareRetriever } from "@langchain/classic/chains/history_aware_retriever"
 
-const rephrasePrompt = ChatPromptTemplate.fromMessages([
-  [
-    "system",
-    "Given the chat history and the latest user question, reformulate the question into a standalone question. Do NOT answer it, just reformulate if needed, otherwise return it as is.",
-  ],
-  new MessagesPlaceholder("chat_history"),
-  ["human", "{input}"],
-])
-
-const answerPrompt = ChatPromptTemplate.fromMessages([
+const prompt = ChatPromptTemplate.fromMessages([
   [
     "system",
     `Você é um assistente que responde perguntas com base nos documentos fornecidos.
@@ -62,17 +51,16 @@ export async function POST(req: Request) {
     m.role === "user" ? new HumanMessage(m.content) : new AIMessage(m.content),
   )
 
-  const retriever = await createRetriever()
-  const historyAwareRetriever = await createHistoryAwareRetriever({
-    llm: model,
-    retriever,
-    rephrasePrompt,
-  })
-  const combineDocsChain = await createStuffDocumentsChain({ llm: model, prompt: answerPrompt })
-  const ragChain = await createRetrievalChain({
-    retriever: historyAwareRetriever,
-    combineDocsChain,
-  })
+  // Retrieve docs before the stream — safe for Supabase session
+  let docs: Awaited<ReturnType<Awaited<ReturnType<typeof createRetriever>>["invoke"]>> = []
+  try {
+    const retriever = await createRetriever()
+    docs = await retriever.invoke(lastUserMessage)
+  } catch (err) {
+    console.error("[chat] retrieval error:", err)
+  }
+
+  const chain = await createStuffDocumentsChain({ llm: model, prompt })
 
   const encoder = new TextEncoder()
   const stream = new ReadableStream({
@@ -83,14 +71,15 @@ export async function POST(req: Request) {
 
       let fullText = ""
       try {
-        const ragStream = await ragChain.stream({
+        const chainStream = await chain.stream({
           input: lastUserMessage,
+          context: docs,
           chat_history: chatHistory,
         })
-        for await (const chunk of ragStream) {
-          if (chunk.answer) {
-            fullText += chunk.answer
-            send({ type: "chunk", text: chunk.answer })
+        for await (const text of chainStream) {
+          if (text) {
+            fullText += text
+            send({ type: "chunk", text })
           }
         }
       } catch (err) {
