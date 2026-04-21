@@ -18,8 +18,8 @@ export default async function DocumentsPage() {
   const documents: Document[] = data ?? []
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden p-6">
-      <h2 className="mb-6 text-xl font-semibold text-gray-900">Documentos</h2>
+    <div className="max-w-2xl mx-auto w-full p-6">
+      <h2 className="text-xl font-bold text-gray-900 mb-6">Documentos</h2>
       <DocumentsView initialDocuments={documents} />
     </div>
   )
