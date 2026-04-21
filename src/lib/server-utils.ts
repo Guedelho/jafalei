@@ -1,17 +1,24 @@
 import "server-only"
+import { createAdmin } from "@/lib/supabase/admin"
 import { RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS } from "@/shared/constants"
 
-const rateLimitMap = new Map<string, number[]>()
+export async function checkRateLimit(userId: string): Promise<boolean> {
+  const admin = createAdmin()
+  const windowStart = new Date(Date.now() - RATE_LIMIT_WINDOW_MS).toISOString()
 
-export function checkRateLimit(userId: string): boolean {
-  const now = Date.now()
-  const timestamps = (rateLimitMap.get(userId) ?? []).filter((t) => now - t < RATE_LIMIT_WINDOW_MS)
-  return timestamps.length < RATE_LIMIT_MAX
-}
+  const { data: sessions } = await admin.from("chat_sessions").select("id").eq("user_id", userId)
 
-export function recordRateLimit(userId: string): void {
-  const now = Date.now()
-  const timestamps = (rateLimitMap.get(userId) ?? []).filter((t) => now - t < RATE_LIMIT_WINDOW_MS)
-  timestamps.push(now)
-  rateLimitMap.set(userId, timestamps)
+  if (!sessions?.length) return true
+
+  const { count } = await admin
+    .from("messages")
+    .select("id", { count: "exact", head: true })
+    .eq("role", "user")
+    .gte("created_at", windowStart)
+    .in(
+      "session_id",
+      sessions.map((s) => s.id),
+    )
+
+  return (count ?? 0) < RATE_LIMIT_MAX
 }

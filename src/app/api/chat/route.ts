@@ -1,7 +1,7 @@
 import { getUserId } from "@/lib/supabase/auth"
 import { createAdmin } from "@/lib/supabase/admin"
 import { retrieveContext } from "@/lib/ai/rag"
-import { checkRateLimit, recordRateLimit } from "@/lib/server-utils"
+import { checkRateLimit } from "@/lib/server-utils"
 import { CHAT_MODEL } from "@/shared/constants"
 import type { Message, SseEvent } from "@/shared/models"
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai"
@@ -11,10 +11,9 @@ export async function POST(req: Request) {
   const userId = await getUserId()
   if (!userId) return new Response("Unauthorized", { status: 401 })
 
-  if (!checkRateLimit(userId)) {
+  if (!(await checkRateLimit(userId))) {
     return Response.json({ error: "Muitas requisições. Tente novamente." }, { status: 429 })
   }
-  recordRateLimit(userId)
 
   const { messages, sessionId } = (await req.json()) as {
     messages: Message[]
