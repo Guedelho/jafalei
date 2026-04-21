@@ -5,18 +5,33 @@ import { checkRateLimit } from "@/lib/server-utils"
 import { CHAT_MODEL } from "@/shared/constants"
 import type { Message, SseEvent } from "@/shared/models"
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai"
-import { ChatPromptTemplate } from "@langchain/core/prompts"
+import { ChatPromptTemplate, MessagesPlaceholder } from "@langchain/core/prompts"
+import { HumanMessage, AIMessage } from "@langchain/core/messages"
 import { createStuffDocumentsChain } from "@langchain/classic/chains/combine_documents"
 import { createRetrievalChain } from "@langchain/classic/chains/retrieval"
+import { createHistoryAwareRetriever } from "@langchain/classic/chains/history_aware_retriever"
 
-const prompt =
-  ChatPromptTemplate.fromTemplate(`Você é um assistente que responde perguntas com base nos documentos fornecidos.
+const rephrasePrompt = ChatPromptTemplate.fromMessages([
+  [
+    "system",
+    "Given the chat history and the latest user question, reformulate the question into a standalone question. Do NOT answer it, just reformulate if needed, otherwise return it as is.",
+  ],
+  new MessagesPlaceholder("chat_history"),
+  ["human", "{input}"],
+])
+
+const answerPrompt = ChatPromptTemplate.fromMessages([
+  [
+    "system",
+    `Você é um assistente que responde perguntas com base nos documentos fornecidos.
 Responda em português. Se a resposta não estiver nos documentos, diga que não encontrou a informação.
 
 Contexto:
-{context}
-
-Pergunta: {input}`)
+{context}`,
+  ],
+  new MessagesPlaceholder("chat_history"),
+  ["human", "{input}"],
+])
 
 const model = new ChatGoogleGenerativeAI({
   model: CHAT_MODEL,
@@ -39,10 +54,21 @@ export async function POST(req: Request) {
   }
 
   const lastUserMessage = [...messages].reverse().find((m) => m.role === "user")?.content ?? ""
+  const chatHistory = messages
+    .slice(0, -1)
+    .map((m) => (m.role === "user" ? new HumanMessage(m.content) : new AIMessage(m.content)))
 
   const retriever = await createRetriever()
-  const combineDocsChain = await createStuffDocumentsChain({ llm: model, prompt })
-  const ragChain = await createRetrievalChain({ retriever, combineDocsChain })
+  const historyAwareRetriever = await createHistoryAwareRetriever({
+    llm: model,
+    retriever,
+    rephrasePrompt,
+  })
+  const combineDocsChain = await createStuffDocumentsChain({ llm: model, prompt: answerPrompt })
+  const ragChain = await createRetrievalChain({
+    retriever: historyAwareRetriever,
+    combineDocsChain,
+  })
 
   const encoder = new TextEncoder()
   const stream = new ReadableStream({
@@ -53,7 +79,10 @@ export async function POST(req: Request) {
 
       let fullText = ""
       try {
-        const ragStream = await ragChain.stream({ input: lastUserMessage })
+        const ragStream = await ragChain.stream({
+          input: lastUserMessage,
+          chat_history: chatHistory,
+        })
         for await (const chunk of ragStream) {
           if (chunk.answer) {
             fullText += chunk.answer
