@@ -1,13 +1,7 @@
 import { getUserId } from "@/lib/supabase/auth"
 import { createAdmin } from "@/lib/supabase/admin"
 import { embedTexts } from "@/lib/ai/embed"
-import { CHUNK_SIZE, CHUNK_OVERLAP } from "@/shared/constants"
-import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters"
-
-const splitter = new RecursiveCharacterTextSplitter({
-  chunkSize: CHUNK_SIZE,
-  chunkOverlap: CHUNK_OVERLAP,
-})
+import { splitter } from "@/lib/ai/genai"
 
 export async function GET() {
   const userId = await getUserId()

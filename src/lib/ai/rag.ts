@@ -1,14 +1,9 @@
 import "server-only"
 import type { Document } from "@langchain/core/documents"
 import { SupabaseVectorStore } from "@langchain/community/vectorstores/supabase"
-import { GoogleGenerativeAIEmbeddings } from "@langchain/google-genai"
+import { embeddings } from "@/lib/ai/genai"
 import { createClient } from "@/lib/supabase/server"
-import { EMBED_MODEL, RAG_MATCH_COUNT } from "@/shared/constants"
-
-const embeddings = new GoogleGenerativeAIEmbeddings({
-  model: EMBED_MODEL,
-  apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
-})
+import { RAG_MATCH_COUNT } from "@/shared/constants"
 
 export async function retrieveDocs(query: string): Promise<Document[]> {
   const supabase = await createClient()

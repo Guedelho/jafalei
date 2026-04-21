@@ -1,10 +1,9 @@
 import { getUserId } from "@/lib/supabase/auth"
 import { createAdmin } from "@/lib/supabase/admin"
 import { retrieveDocs } from "@/lib/ai/rag"
+import { chatModel } from "@/lib/ai/genai"
 import { checkRateLimit } from "@/lib/server-utils"
-import { CHAT_MODEL } from "@/shared/constants"
 import type { Message, SseEvent } from "@/shared/models"
-import { ChatGoogleGenerativeAI } from "@langchain/google-genai"
 import { Document } from "@langchain/core/documents"
 import { ChatPromptTemplate, MessagesPlaceholder } from "@langchain/core/prompts"
 import { HumanMessage, AIMessage } from "@langchain/core/messages"
@@ -22,13 +21,6 @@ Contexto:
   new MessagesPlaceholder("chat_history"),
   ["human", "{input}"],
 ])
-
-const model = new ChatGoogleGenerativeAI({
-  model: CHAT_MODEL,
-  temperature: 0.3,
-  streaming: true,
-  apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
-})
 
 export async function POST(req: Request) {
   const userId = await getUserId()
@@ -60,7 +52,7 @@ export async function POST(req: Request) {
     console.error("[chat] retrieval error:", err)
   }
 
-  const chain = await createStuffDocumentsChain({ llm: model, prompt })
+  const chain = await createStuffDocumentsChain({ llm: chatModel, prompt })
 
   const encoder = new TextEncoder()
   const stream = new ReadableStream({
