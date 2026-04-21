@@ -1,0 +1,47 @@
+{
+  "name": "jafalei",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "knip": "knip",
+    "jscpd": "jscpd --min-lines 5 --min-tokens 50 --ignore '**/.next/**,**/node_modules/**' ."
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "@supabase/ssr": "^0.10.2",
+    "@supabase/supabase-js": "^2.104.0",
+    "@vercel/analytics": "^2.0.1",
+    "@vercel/speed-insights": "^2.0.0",
+    "mammoth": "^1.12.0",
+    "next": "16.2.4",
+    "pdf-parse": "^2.4.5",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "server-only": "^0.0.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/pdf-parse": "^1.1.5",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.4",
+    "jscpd": "^4.0.9",
+    "knip": "^6.5.0",
+    "lint-staged": "^16.4.0",
+    "prettier": "^3.8.3",
+    "supabase": "^2.93.0",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,json,css,md}": "prettier --write"
+  }
+}
