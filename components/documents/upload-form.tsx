@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef } from "react"
-import { uploadDocument } from "@/lib/api/documents"
+import { uploadDocument } from "@/lib/services/documents"
 import type { Document } from "@/shared/models"
 
 export default function UploadForm({ onUpload }: { onUpload?: (doc: Document) => void }) {

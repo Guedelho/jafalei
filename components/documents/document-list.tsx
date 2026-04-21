@@ -1,6 +1,6 @@
 "use client"
 
-import { deleteDocument } from "@/lib/api/documents"
+import { deleteDocument } from "@/lib/services/documents"
 import type { Document } from "@/shared/models"
 import { useState } from "react"
 
