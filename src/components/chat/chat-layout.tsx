@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 import ChatInterface from "@/components/chat/chat-interface"
 import type { ChatSession, Message } from "@/shared/models"
 
@@ -25,12 +24,12 @@ export default function ChatLayout({
   activeSessionId: string
   initialMessages: Message[]
 }) {
-  const router = useRouter()
   const [sessions, setSessions] = useState(initialSessions)
   const [activeSessionId, setActiveSessionId] = useState(initialSessionId)
   const [messages, setMessages] = useState<Message[]>(initialMessages)
   const [loadingSession, setLoadingSession] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
+  const [deleting, setDeleting] = useState<string | null>(null)
 
   async function selectSession(id: string) {
     if (id === activeSessionId) return
@@ -50,6 +49,22 @@ export default function ChatLayout({
     setMessages([])
     setActiveSessionId(session.id)
     setCreating(false)
+  }
+
+  async function deleteSession(e: React.MouseEvent, id: string) {
+    e.stopPropagation()
+    setDeleting(id)
+    await fetch(`/api/chat/sessions/${id}`, { method: "DELETE" })
+    const remaining = sessions.filter((s) => s.id !== id)
+    setSessions(remaining)
+    if (id === activeSessionId) {
+      if (remaining.length > 0) {
+        await selectSession(remaining[0].id)
+      } else {
+        await newSession()
+      }
+    }
+    setDeleting(null)
   }
 
   function onNewMessage(sessionId: string, userContent: string) {
@@ -77,21 +92,45 @@ export default function ChatLayout({
             <p className="px-2 py-3 text-xs text-gray-400">Nenhuma conversa ainda.</p>
           )}
           {sessions.map((s) => (
-            <button
+            <div
               key={s.id}
-              onClick={() => selectSession(s.id)}
-              disabled={loadingSession === s.id}
-              className={`w-full rounded-lg px-3 py-2.5 text-left transition-colors mb-0.5 ${
-                s.id === activeSessionId
-                  ? "bg-blue-50 text-blue-900"
-                  : "text-gray-700 hover:bg-gray-50"
+              className={`group relative mb-0.5 rounded-lg transition-colors ${
+                s.id === activeSessionId ? "bg-blue-50" : "hover:bg-gray-50"
               }`}
             >
-              <p className="truncate text-sm font-medium">
-                {s.preview ? s.preview : "Nova conversa"}
-              </p>
-              <p className="mt-0.5 text-xs text-gray-400">{formatDate(s.created_at)}</p>
-            </button>
+              <button
+                onClick={() => selectSession(s.id)}
+                disabled={loadingSession === s.id}
+                className="w-full px-3 py-2.5 text-left"
+              >
+                <p
+                  className={`truncate pr-6 text-sm font-medium ${s.id === activeSessionId ? "text-blue-900" : "text-gray-700"}`}
+                >
+                  {s.preview ?? "Nova conversa"}
+                </p>
+                <p className="mt-0.5 text-xs text-gray-400">{formatDate(s.created_at)}</p>
+              </button>
+              <button
+                onClick={(e) => deleteSession(e, s.id)}
+                disabled={deleting === s.id}
+                className="absolute right-2 top-2.5 hidden rounded p-1 text-gray-400 hover:bg-gray-200 hover:text-gray-600 group-hover:block"
+                title="Remover"
+              >
+                {deleting === s.id ? (
+                  <span className="text-xs">...</span>
+                ) : (
+                  <svg
+                    className="h-3.5 w-3.5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                )}
+              </button>
+            </div>
           ))}
         </nav>
       </aside>
