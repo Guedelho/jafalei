@@ -43,7 +43,8 @@ export default function ChatInterface({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: [...messages, userMessage],
+          input: text,
+          chat_history: messages,
           sessionId,
         }),
       })

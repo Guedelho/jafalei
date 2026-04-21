@@ -48,15 +48,19 @@ export async function POST(req: Request) {
     return Response.json({ error: "Muitas requisições. Tente novamente." }, { status: 429 })
   }
 
-  const { messages, sessionId } = (await req.json()) as {
-    messages: Message[]
+  const {
+    input: lastUserMessage,
+    chat_history,
+    sessionId,
+  } = (await req.json()) as {
+    input: string
+    chat_history: Message[]
     sessionId: string
   }
 
-  const lastUserMessage = [...messages].reverse().find((m) => m.role === "user")?.content ?? ""
-  const chatHistory = messages
-    .slice(0, -1)
-    .map((m) => (m.role === "user" ? new HumanMessage(m.content) : new AIMessage(m.content)))
+  const chatHistory = chat_history.map((m) =>
+    m.role === "user" ? new HumanMessage(m.content) : new AIMessage(m.content),
+  )
 
   const retriever = await createRetriever()
   const historyAwareRetriever = await createHistoryAwareRetriever({
