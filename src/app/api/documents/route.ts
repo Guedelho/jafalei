@@ -60,8 +60,18 @@ export async function POST(req: Request) {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const pdfParse = require("pdf-parse/lib/pdf-parse") as (
         b: Buffer,
+        opts: {
+          pagerender: (page: {
+            getTextContent: () => Promise<{ items: { str: string }[] }>
+          }) => Promise<string>
+        },
       ) => Promise<{ text: string }>
-      const parsed = await pdfParse(buffer)
+      const parsed = await pdfParse(buffer, {
+        pagerender: async (page) => {
+          const content = await page.getTextContent()
+          return content.items.map((item) => item.str).join(" ")
+        },
+      })
       text = parsed.text
     } else if (file.type === "text/plain") {
       text = buffer.toString("utf-8")
