@@ -58,7 +58,9 @@ export async function POST(req: Request) {
 
     if (file.type === "application/pdf") {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const pdfParse = require("pdf-parse") as (b: Buffer) => Promise<{ text: string }>
+      const pdfParse = require("pdf-parse/lib/pdf-parse") as (
+        b: Buffer,
+      ) => Promise<{ text: string }>
       const parsed = await pdfParse(buffer)
       text = parsed.text
     } else if (file.type === "text/plain") {
