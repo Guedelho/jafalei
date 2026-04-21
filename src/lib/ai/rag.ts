@@ -1,13 +1,13 @@
 import "server-only"
-import { createAdmin } from "@/lib/supabase/admin"
+import { createClient } from "@/lib/supabase/server"
 import { embedText } from "@/lib/ai/embed"
 import { RAG_MATCH_COUNT } from "@/shared/constants"
 
 export async function retrieveContext(query: string): Promise<string> {
   const embedding = await embedText(query)
-  const admin = createAdmin()
+  const supabase = await createClient()
 
-  const { data: chunks, error } = await admin.rpc("match_chunks", {
+  const { data: chunks, error } = await supabase.rpc("match_chunks", {
     query_embedding: embedding,
     match_count: RAG_MATCH_COUNT,
   })
