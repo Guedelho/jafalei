@@ -1,6 +1,5 @@
 export const CHAT_MODEL = "gemini-3-flash-preview"
 export const EMBED_MODEL = "gemini-embedding-2-preview"
-export const EMBED_DIMS = 3072
 
 export const CHUNK_SIZE = 1000
 export const CHUNK_OVERLAP = 100

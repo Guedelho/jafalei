@@ -38,7 +38,7 @@ export async function POST(req: Request) {
     return Response.json({ error: "Arquivo inválido." }, { status: 400 })
   }
 
-  const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10 MB
+  const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5 MB
   if (file.size > MAX_FILE_SIZE) {
     return Response.json({ error: "Arquivo muito grande. Limite: 10 MB." }, { status: 400 })
   }

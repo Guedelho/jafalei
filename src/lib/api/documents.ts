@@ -1,11 +1,5 @@
 import type { Document } from "@/shared/models"
 
-export async function listDocuments(): Promise<Document[]> {
-  const res = await fetch("/api/documents")
-  if (!res.ok) throw new Error("Erro ao carregar documentos")
-  return res.json()
-}
-
 export async function uploadDocument(file: File): Promise<Document> {
   const body = new FormData()
   body.append("file", file)
