@@ -57,22 +57,10 @@ export async function POST(req: Request) {
     const buffer = Buffer.from(await file.arrayBuffer())
 
     if (file.type === "application/pdf") {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const pdfParse = require("pdf-parse") as (
-        b: Buffer,
-        opts: {
-          pagerender: (page: {
-            getTextContent: () => Promise<{ items: { str: string }[] }>
-          }) => Promise<string>
-        },
-      ) => Promise<{ text: string }>
-      const parsed = await pdfParse(buffer, {
-        pagerender: async (page) => {
-          const content = await page.getTextContent()
-          return content.items.map((item) => item.str).join(" ")
-        },
-      })
-      text = parsed.text
+      const { extractText, getDocumentProxy } = await import("unpdf")
+      const pdf = await getDocumentProxy(new Uint8Array(buffer))
+      const { text: pdfText } = await extractText(pdf, { mergePages: true })
+      text = pdfText
     } else if (file.type === "text/plain") {
       text = buffer.toString("utf-8")
     } else {
