@@ -1,11 +1,11 @@
 import "server-only"
-import type { Document } from "@langchain/core/documents"
 import { SupabaseVectorStore } from "@langchain/community/vectorstores/supabase"
 import { GoogleGenerativeAIEmbeddings } from "@langchain/google-genai"
+import type { BaseRetriever } from "@langchain/core/retrievers"
 import { createClient } from "@/lib/supabase/server"
 import { EMBED_MODEL, RAG_MATCH_COUNT } from "@/shared/constants"
 
-export async function retrieveContext(query: string): Promise<Document[]> {
+export async function createRetriever(): Promise<BaseRetriever> {
   const supabase = await createClient()
 
   const vectorStore = new SupabaseVectorStore(
@@ -20,5 +20,5 @@ export async function retrieveContext(query: string): Promise<Document[]> {
     },
   )
 
-  return vectorStore.asRetriever(RAG_MATCH_COUNT).invoke(query)
+  return vectorStore.asRetriever(RAG_MATCH_COUNT)
 }
